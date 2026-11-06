@@ -1,0 +1,532 @@
+<script>
+  /**
+   * FinKeluarga — Pure Vanilla ES6 Client Controller
+   * File: src/Javascript.html
+   */
+
+  // Local State Container
+  const State = {
+    activeTab: 'view-dashboard',
+    actor: localStorage.getItem('finkeluarga_actor') || 'Istri',
+    data: null,
+    selectedPhaseKey: null
+  };
+
+  // Helper Formatter Rupiah
+  function formatIDR(val) {
+    const num = Number(val) || 0;
+    return 'Rp' + num.toLocaleString('id-ID');
+  }
+
+  // Toast Notification System
+  function showToast(message, isError = false) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    if (isError) {
+      toast.style.background = 'var(--color-status-alert)';
+    }
+    toast.innerHTML = `<span>${isError ? '⚠️' : '✅'}</span><span>${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.transition = 'opacity 0.4s';
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 400);
+    }, 3500);
+  }
+
+  // View Navigation Switcher
+  function switchView(targetViewId) {
+    State.activeTab = targetViewId;
+    document.querySelectorAll('.view-panel').forEach(el => el.classList.remove('active'));
+    const target = document.getElementById(targetViewId);
+    if (target) target.classList.add('active');
+
+    document.querySelectorAll('.nav-item').forEach(btn => {
+      if (btn.getAttribute('data-target') === targetViewId) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Actor Toggle Handler with LocalStorage Persistence
+  function setActor(newActor) {
+    State.actor = newActor;
+    localStorage.setItem('finkeluarga_actor', newActor);
+    document.querySelectorAll('.actor-btn').forEach(btn => {
+      if (btn.getAttribute('data-actor') === newActor) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  }
+
+  // DOM Renderers
+  function renderAll() {
+    if (!State.data) return;
+    renderHeader();
+    renderDashboard();
+    renderInputForm();
+    renderSinkingFunds();
+    renderVehicleView();
+  }
+
+  function renderHeader() {
+    const phase = State.data.activePhase;
+    const btn = document.getElementById('header-phase-btn');
+    if (btn && phase) {
+      document.getElementById('header-phase-label').innerText = phase.name.split(':')[0];
+    }
+    const sub = document.getElementById('header-period-label');
+    if (sub && phase) {
+      sub.innerText = phase.period;
+    }
+  }
+
+  function renderDashboard() {
+    const d = State.data;
+    if (!d) return;
+
+    // Overview Stats
+    const incomeEl = document.getElementById('dash-income');
+    if (incomeEl) incomeEl.innerText = formatIDR(d.monthlyIncome);
+
+    const spentEl = document.getElementById('dash-spent');
+    if (spentEl) spentEl.innerText = formatIDR(d.monthTotalSpent);
+
+    const remainingEl = document.getElementById('dash-remaining');
+    if (remainingEl) {
+      const rem = d.monthlyIncome - d.monthTotalSpent;
+      remainingEl.innerText = formatIDR(rem);
+    }
+
+    const weekLabel = document.getElementById('dash-week-label');
+    if (weekLabel) weekLabel.innerText = d.currentWeekIndex;
+
+    // Envelopes List
+    const envContainer = document.getElementById('dash-envelopes-list');
+    if (envContainer) {
+      envContainer.innerHTML = '';
+      if (!d.envelopes || d.envelopes.length === 0) {
+        envContainer.innerHTML = '<div style="color:var(--color-text-muted);font-size:13px;padding:8px 0;">Belum ada kuota amplop.</div>';
+      } else {
+        d.envelopes.forEach(env => {
+          const item = document.createElement('div');
+          item.className = 'envelope-item';
+          item.innerHTML = `
+            <div class="envelope-top">
+              <span class="envelope-title">${env.categoryName}</span>
+              <span class="envelope-amounts">${formatIDR(env.spentAmount)} / <span style="color:var(--color-text-muted);font-weight:400;">${formatIDR(env.quotaAmount)}</span></span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill status-${env.statusColor}" style="width: ${env.percentage}%;"></div>
+            </div>
+            <div class="envelope-meta">
+              <span>Sisa: <strong style="color:var(--color-${env.statusColor === 'alert' ? 'status-alert' : 'primary'});">${formatIDR(env.remainingAmount)}</strong></span>
+              <span>${env.percentage}% terpakai</span>
+            </div>
+          `;
+          envContainer.appendChild(item);
+        });
+      }
+    }
+
+    // Recent Transactions
+    const trxContainer = document.getElementById('dash-recent-trx');
+    if (trxContainer) {
+      trxContainer.innerHTML = '';
+      if (!d.recentTransactions || d.recentTransactions.length === 0) {
+        trxContainer.innerHTML = '<div style="color:var(--color-text-muted);font-size:13px;padding:8px 0;">Belum ada transaksi tercatat.</div>';
+      } else {
+        d.recentTransactions.slice(0, 5).forEach(tx => {
+          const el = document.createElement('div');
+          el.className = 'trx-item';
+          const typeClass = tx.type === 'INCOME' ? 'income' : (tx.type === 'SINKING_TRANSFER' ? 'transfer' : '');
+          const sign = tx.type === 'INCOME' ? '+' : '-';
+          el.innerHTML = `
+            <div class="trx-left">
+              <span class="trx-cat">${tx.categoryName}</span>
+              <span class="trx-sub">${tx.date} • ${tx.actor} ${tx.notes ? '• ' + tx.notes : ''}</span>
+            </div>
+            <div class="trx-amount ${typeClass}">${sign}${formatIDR(tx.amount)}</div>
+          `;
+          trxContainer.appendChild(el);
+        });
+      }
+    }
+  }
+
+  function renderInputForm() {
+    const d = State.data;
+    if (!d) return;
+
+    // Set Actor Toggle from State
+    setActor(State.actor);
+
+    // Set Default Date to Today
+    const dateInput = document.getElementById('input-date');
+    if (dateInput && !dateInput.value) {
+      dateInput.value = new Date().toISOString().split('T')[0];
+    }
+
+    // Populate Categories Dropdown
+    const catSelect = document.getElementById('input-category');
+    if (catSelect && catSelect.options.length <= 1) {
+      catSelect.innerHTML = '<option value="">-- Pilih Kategori Pos --</option>';
+      const groups = {};
+      d.categories.forEach(c => {
+        if (!groups[c.groupName]) groups[c.groupName] = [];
+        groups[c.groupName].push(c);
+      });
+
+      for (const grpName in groups) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = grpName;
+        groups[grpName].forEach(cat => {
+          const opt = document.createElement('option');
+          opt.value = cat.id;
+          opt.innerText = `${cat.subCategory} (Plafon: ${formatIDR(cat.monthlyBudget)})`;
+          optgroup.appendChild(opt);
+        });
+        catSelect.appendChild(optgroup);
+      }
+    }
+
+    // Populate Sinking Funds Dropdown (for transfers)
+    const sfSelect = document.getElementById('input-sinking-fund');
+    if (sfSelect && sfSelect.options.length <= 1 && d.sinkingFunds) {
+      sfSelect.innerHTML = '<option value="">-- Pilih Tujuan Tabungan --</option>';
+      d.sinkingFunds.forEach(sf => {
+        const opt = document.createElement('option');
+        opt.value = sf.id;
+        opt.innerText = `${sf.name} (${sf.status})`;
+        sfSelect.appendChild(opt);
+      });
+    }
+  }
+
+  function renderSinkingFunds() {
+    const d = State.data;
+    const container = document.getElementById('sf-container');
+    if (!container || !d || !d.sinkingFunds) return;
+
+    container.innerHTML = '';
+    d.sinkingFunds.forEach(sf => {
+      const card = document.createElement('div');
+      card.className = 'sf-card';
+      card.innerHTML = `
+        <div class="sf-header">
+          <div>
+            <div class="sf-name">${sf.name}</div>
+            <div style="font-size:12px;color:var(--color-text-muted);">${sf.accountInfo}</div>
+          </div>
+          <span class="sf-status-tag sf-status-${sf.status}">${sf.status}</span>
+        </div>
+        <div style="margin:10px 0;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:4px;">
+            <span>${formatIDR(sf.currentBalance)}</span>
+            <span style="color:var(--color-text-muted);">Target: ${formatIDR(sf.targetAmount)}</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${sf.percentage}%;background:var(--color-primary);"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--color-text-muted);margin-top:4px;">
+            <span>Setoran: ${formatIDR(sf.monthlyContrib)}/bln</span>
+            <span>${sf.percentage}% • Tenggat: ${sf.targetDate}</span>
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function renderVehicleView() {
+    const d = State.data;
+    if (!d || !d.vehicleAnalytics) return;
+    const v = d.vehicleAnalytics;
+
+    const routeEl = document.getElementById('veh-route');
+    if (routeEl) routeEl.innerText = v.commuterRoute;
+
+    const evCostEl = document.getElementById('veh-ev-cost');
+    if (evCostEl) evCostEl.innerText = formatIDR(v.currentEvCost);
+
+    const pcxCostEl = document.getElementById('veh-pcx-cost');
+    if (pcxCostEl) pcxCostEl.innerText = formatIDR(v.iceBaselineMonthly);
+
+    const savingsEl = document.getElementById('veh-savings');
+    if (savingsEl) savingsEl.innerText = formatIDR(v.estimatedMonthlySavings);
+
+    // Recent Vehicle Logs
+    const logList = document.getElementById('veh-recent-logs');
+    if (logList) {
+      logList.innerHTML = '';
+      if (!v.recentLogs || v.recentLogs.length === 0) {
+        logList.innerHTML = '<div style="color:var(--color-text-muted);font-size:13px;padding:8px 0;">Belum ada log kendaraan.</div>';
+      } else {
+        v.recentLogs.forEach(lg => {
+          const item = document.createElement('div');
+          item.className = 'trx-item';
+          item.innerHTML = `
+            <div class="trx-left">
+              <span class="trx-cat">${lg.logType} (${lg.vehicleType})</span>
+              <span class="trx-sub">${lg.date} • Odometer: ${lg.odometer} km ${lg.notes ? '• ' + lg.notes : ''}</span>
+            </div>
+            <div class="trx-amount" style="color:var(--color-text-main);">${formatIDR(lg.cost)}</div>
+          `;
+          logList.appendChild(item);
+        });
+      }
+    }
+  }
+
+  // Transaction Submission with Optimistic Updates
+  function submitTransaction(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-submit-trx');
+    const amountRaw = document.getElementById('input-amount').value.replace(/[^0-9]/g, '');
+    const amount = Number(amountRaw);
+    const categoryId = document.getElementById('input-category').value;
+    const trxType = document.getElementById('input-trx-type').value;
+    const sinkingFundId = document.getElementById('input-sinking-fund').value;
+    const dateVal = document.getElementById('input-date').value;
+    const wallet = document.getElementById('input-wallet').value;
+    const notes = document.getElementById('input-notes').value;
+
+    if (!amount || amount <= 0) {
+      showToast('Masukkan nominal pengeluaran yang valid!', true);
+      return;
+    }
+    if (!categoryId) {
+      showToast('Pilih kategori pos anggaran terlebih dahulu!', true);
+      return;
+    }
+
+    const payload = {
+      date: dateVal,
+      trxType: trxType,
+      categoryId: categoryId,
+      sinkingFundId: sinkingFundId,
+      amount: amount,
+      actor: State.actor,
+      sourceWallet: wallet,
+      notes: notes
+    };
+
+    // Optimistic Update: Saldo di memori lokal langsung diupdate
+    if (State.data && State.data.envelopes) {
+      const matchEnv = State.data.envelopes.find(env => env.categoryId === categoryId);
+      if (matchEnv) {
+        matchEnv.spentAmount += amount;
+        matchEnv.remainingAmount = Math.max(0, matchEnv.quotaAmount - matchEnv.spentAmount);
+        matchEnv.percentage = Math.min(100, Math.round((matchEnv.spentAmount / matchEnv.quotaAmount) * 100));
+        if (matchEnv.percentage >= 90) matchEnv.statusColor = 'alert';
+        else if (matchEnv.percentage >= 75) matchEnv.statusColor = 'warn';
+      }
+      State.data.monthTotalSpent += amount;
+      renderDashboard();
+    }
+
+    // UI Loading state
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> <span>Menyimpan ke Google Sheets...</span>';
+
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false;
+        btn.innerHTML = 'Catat Transaksi Sekarang';
+        showToast('Transaksi berhasil disimpan ke Google Sheets!');
+        document.getElementById('form-trx').reset();
+        document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
+        // Reload bootstrap payload in background
+        fetchFreshData();
+        switchView('view-dashboard');
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        btn.innerHTML = 'Catat Transaksi Sekarang';
+        showToast('Gagal menyimpan: ' + err.message, true);
+        // Refresh to revert optimistic update
+        fetchFreshData();
+      })
+      .apiCreateTransaction(payload);
+  }
+
+  // Vehicle Log Submission
+  function submitVehicleLog(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-submit-veh');
+    const costRaw = document.getElementById('veh-input-cost').value.replace(/[^0-9]/g, '');
+    const cost = Number(costRaw) || 0;
+    const odo = Number(document.getElementById('veh-input-odo').value) || 0;
+    const logType = document.getElementById('veh-input-type').value;
+    const vehType = document.getElementById('veh-input-vehicle').value;
+    const notes = document.getElementById('veh-input-notes').value;
+    const dateVal = document.getElementById('veh-input-date').value;
+
+    const payload = {
+      date: dateVal,
+      vehicleType: vehType,
+      odometer: odo,
+      logType: logType,
+      cost: cost,
+      notes: notes
+    };
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> <span>Menyimpan Log...</span>';
+
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false;
+        btn.innerHTML = 'Simpan Log Kendaraan';
+        showToast('Log kendaraan berhasil dicatat!');
+        document.getElementById('form-vehicle').reset();
+        document.getElementById('veh-input-date').value = new Date().toISOString().split('T')[0];
+        fetchFreshData();
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        btn.innerHTML = 'Simpan Log Kendaraan';
+        showToast('Gagal mencatat log: ' + err.message, true);
+      })
+      .apiRecordVehicleLog(payload);
+  }
+
+  // Modal Phase Switcher
+  function openPhaseModal() {
+    const modal = document.getElementById('modal-phase');
+    if (!modal) return;
+    State.selectedPhaseKey = State.data ? State.data.activePhase.key : 'PHASE_1';
+    renderPhaseModalOptions();
+    modal.classList.add('open');
+  }
+
+  function closePhaseModal() {
+    const modal = document.getElementById('modal-phase');
+    if (modal) modal.classList.remove('open');
+  }
+
+  function renderPhaseModalOptions() {
+    const container = document.getElementById('modal-phase-options');
+    if (!container || !State.data) return;
+    container.innerHTML = '';
+    const phases = State.data.allPhases;
+
+    for (const key in phases) {
+      const p = phases[key];
+      const div = document.createElement('div');
+      div.className = `phase-option ${key === State.selectedPhaseKey ? 'selected' : ''}`;
+      div.onclick = () => {
+        State.selectedPhaseKey = key;
+        renderPhaseModalOptions();
+      };
+      div.innerHTML = `
+        <div class="phase-option-title">${p.name} (${p.period})</div>
+        <div class="phase-option-desc">${p.description}</div>
+      `;
+      container.appendChild(div);
+    }
+  }
+
+  function confirmPhaseSwitch() {
+    const btn = document.getElementById('btn-confirm-phase');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Mengubah Fase...';
+
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false;
+        btn.innerHTML = 'Aktifkan Fase Ini';
+        closePhaseModal();
+        showToast('Fase finansial berhasil diubah!');
+        fetchFreshData();
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        btn.innerHTML = 'Aktifkan Fase Ini';
+        showToast('Gagal mengubah fase: ' + err.message, true);
+      })
+      .apiSwitchPhase(State.selectedPhaseKey);
+  }
+
+  // Background Data Synchronizer
+  function fetchFreshData() {
+    google.script.run
+      .withSuccessHandler(data => {
+        if (data && !data.error) {
+          State.data = data;
+          renderAll();
+        }
+      })
+      .apiGetBootstrapData();
+  }
+
+  // One-Click Database Setup (khusus aktivasi awal)
+  function runDatabaseSetup() {
+    showToast('Menginisialisasi tab Google Sheets...');
+    google.script.run
+      .withSuccessHandler(res => {
+        showToast(res.message);
+        fetchFreshData();
+      })
+      .withFailureHandler(err => {
+        showToast('Gagal setup: ' + err.message, true);
+      })
+      .apiSetupDatabase();
+  }
+
+  // Initialize on Window Load
+  window.addEventListener('DOMContentLoaded', () => {
+    // Read Initial Data from Injected Scriptlet
+    if (window.INITIAL_DATA && !window.INITIAL_DATA.error) {
+      State.data = window.INITIAL_DATA;
+      renderAll();
+    } else {
+      fetchFreshData();
+    }
+
+    // Attach Event Handlers
+    const formTrx = document.getElementById('form-trx');
+    if (formTrx) formTrx.addEventListener('submit', submitTransaction);
+
+    const formVeh = document.getElementById('form-vehicle');
+    if (formVeh) formVeh.addEventListener('submit', submitVehicleLog);
+
+    // Format Rupiah on typing in form
+    const amountInput = document.getElementById('input-amount');
+    if (amountInput) {
+      amountInput.addEventListener('input', e => {
+        const raw = e.target.value.replace(/[^0-9]/g, '');
+        e.target.value = raw ? Number(raw).toLocaleString('id-ID') : '';
+      });
+    }
+
+    const vehCostInput = document.getElementById('veh-input-cost');
+    if (vehCostInput) {
+      vehCostInput.addEventListener('input', e => {
+        const raw = e.target.value.replace(/[^0-9]/g, '');
+        e.target.value = raw ? Number(raw).toLocaleString('id-ID') : '';
+      });
+    }
+
+    // Transaction Type toggle for Sinking Fund dropdown
+    const typeSelect = document.getElementById('input-trx-type');
+    const sfGroup = document.getElementById('group-sinking-fund');
+    if (typeSelect && sfGroup) {
+      typeSelect.addEventListener('change', () => {
+        sfGroup.style.display = typeSelect.value === 'SINKING_TRANSFER' ? 'block' : 'none';
+      });
+    }
+
+    // Set Initial Vehicle Date
+    const vehDate = document.getElementById('veh-input-date');
+    if (vehDate) vehDate.value = new Date().toISOString().split('T')[0];
+  });
+</script>

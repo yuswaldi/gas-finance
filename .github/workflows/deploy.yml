@@ -1,0 +1,51 @@
+name: Deploy FinKeluarga to Google Apps Script
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Clasp & Dependencies
+        run: |
+          npm ci || npm install -g @google/clasp
+
+      - name: Authenticate Clasp
+        run: |
+          mkdir -p ~/.clasp
+          echo '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
+          chmod 600 ~/.clasprc.json
+
+      - name: Inject Script ID
+        run: |
+          node -e "
+            const fs = require('fs');
+            const claspConfig = {
+              scriptId: '${{ secrets.SCRIPT_ID }}',
+              rootDir: './src'
+            };
+            fs.writeFileSync('./.clasp.json', JSON.stringify(claspConfig, null, 2));
+          "
+
+      - name: Deploy Code to Google Apps Script
+        run: |
+          npx clasp push --force
+
+      - name: Audit Deployment Status
+        run: |
+          npx clasp status
+          echo "Deployment FinKeluarga berhasil didorong ke Google Apps Script."

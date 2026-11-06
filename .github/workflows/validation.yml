@@ -1,0 +1,51 @@
+name: Validation & Financial Logic Tests
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Test Dependencies
+        run: |
+          npm install
+
+      - name: Run Financial Calculation Unit Tests
+        run: |
+          npm test
+
+      - name: Audit GAS Code Guidelines
+        run: |
+          echo "Auditing Google Apps Script compliance..."
+          # Ensure no ES modules syntax in src
+          if grep -rn "import " src/*.js 2>/dev/null; then
+            echo "ERROR: ES module import found in src/"
+            exit 1
+          fi
+          if grep -rn "export default" src/*.js 2>/dev/null; then
+            echo "ERROR: ES module export found in src/"
+            exit 1
+          fi
+          # Ensure no external CDN scripts or stylesheet links in HTML files
+          if grep -E "(https?://cdn|<script src=\"http|<link href=\"http)" src/*.html 2>/dev/null; then
+            echo "ERROR: External CDN detected in src/*.html"
+            exit 1
+          fi
+          echo "GAS Compliance audit passed successfully."

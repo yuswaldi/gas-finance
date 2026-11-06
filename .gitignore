@@ -1,0 +1,13 @@
+# Dependencies & tools (CI/CD only)
+node_modules/
+package-lock.json
+
+# Local clasp credentials
+.clasprc.json
+.clasp.json.local
+
+# Logs and environment
+*.log
+.DS_Store
+.env
+.env.local

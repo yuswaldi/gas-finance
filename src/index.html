@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>FinKeluarga — Sistem Finansial Keluarga Depok & Jakarta</title>
+  <?!= include('Stylesheet'); ?>
+</head>
+<body>
+
+  <!-- Top App Bar Header -->
+  <header class="app-header">
+    <div class="brand-group">
+      <div class="brand-logo">FK</div>
+      <div>
+        <div class="brand-title">FinKeluarga</div>
+        <div class="brand-subtitle" id="header-period-label">Nov 2026 s/d Jun 2027</div>
+      </div>
+    </div>
+    <button class="phase-badge-btn" id="header-phase-btn" onclick="openPhaseModal()" title="Klik untuk beralih fase finansial">
+      <span class="phase-dot"></span>
+      <span id="header-phase-label">Fase 1</span>
+      <span style="font-size:10px;opacity:0.7;">▾</span>
+    </button>
+  </header>
+
+  <!-- Main Container -->
+  <main class="container">
+
+    <!-- View 1: Dashboard Overview -->
+    <section id="view-dashboard" class="view-panel active">
+      <!-- Financial Overview Card -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Ringkasan Bulan Ini</span>
+          <span class="card-badge" id="dash-week-label">2026-W45</span>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-box">
+            <div class="stat-label">Penghasilan Tetap</div>
+            <div class="stat-value stat-highlight" id="dash-income">Rp17.000.000</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Total Belanja Bulan Ini</div>
+            <div class="stat-value" id="dash-spent">Rp0</div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--color-text-muted);display:flex;justify-content:space-between;padding-top:4px;">
+          <span>Sisa Likuiditas Berjalan:</span>
+          <strong id="dash-remaining" style="color:var(--color-primary-dark);font-size:14px;">Rp17.000.000</strong>
+        </div>
+      </div>
+
+      <!-- Weekly Envelope Progress Card -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Amplop Mingguan Berjalan</span>
+          <span class="card-badge">Senin – Minggu</span>
+        </div>
+        <div id="dash-envelopes-list">
+          <!-- Diisi otomatis oleh Javascript.html -->
+          <div style="color:var(--color-text-muted);font-size:13px;padding:8px 0;">Memuat kuota amplop...</div>
+        </div>
+      </div>
+
+      <!-- Recent Transactions Feed -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Transaksi Terakhir</span>
+          <button onclick="switchView('view-input')" style="border:none;background:transparent;color:var(--color-primary);font-weight:600;font-size:13px;cursor:pointer;">+ Catat Baru</button>
+        </div>
+        <div id="dash-recent-trx" class="trx-list">
+          <div style="color:var(--color-text-muted);font-size:13px;padding:8px 0;">Memuat riwayat transaksi...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View 2: Form Input Transaksi -->
+    <section id="view-input" class="view-panel">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Catat Pengeluaran Cepat</span>
+          <span class="card-badge">Formulir Transaksi</span>
+        </div>
+
+        <!-- Segmented Actor Toggle (Suami | Istri) with LocalStorage Persistence -->
+        <div class="form-group">
+          <label class="form-label">Aktor Pencatat Transaksi</label>
+          <div class="actor-toggle-group">
+            <button type="button" class="actor-btn" data-actor="Istri" onclick="setActor('Istri')">👩 Istri (Dapur & Anak)</button>
+            <button type="button" class="actor-btn" data-actor="Suami" onclick="setActor('Suami')">👨 Suami (Kerja & Rumah)</button>
+          </div>
+        </div>
+
+        <form id="form-trx">
+          <div class="form-group">
+            <label class="form-label" for="input-amount">Nominal Pengeluaran</label>
+            <div class="input-rupiah-prefix">
+              <span class="input-prefix-tag">Rp</span>
+              <input type="text" id="input-amount" class="form-control" placeholder="0" inputmode="numeric" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="input-category">Kategori Pos Anggaran</label>
+            <select id="input-category" class="form-control" required>
+              <option value="">-- Memuat Kategori... --</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label class="form-label" for="input-date">Tanggal</label>
+              <input type="date" id="input-date" class="form-control" required>
+            </div>
+            <div>
+              <label class="form-label" for="input-trx-type">Tipe Transaksi</label>
+              <select id="input-trx-type" class="form-control">
+                <option value="EXPENSE">Pengeluaran</option>
+                <option value="SINKING_TRANSFER">Setor Tabungan</option>
+                <option value="INCOME">Pemasukan Ekstra</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Dynamic Sinking Fund Select (Hanya tampil jika tipe SINKING_TRANSFER) -->
+          <div class="form-group" id="group-sinking-fund" style="display:none;">
+            <label class="form-label" for="input-sinking-fund">Tujuan Pos Tabungan Khusus</label>
+            <select id="input-sinking-fund" class="form-control">
+              <option value="">-- Pilih Sinking Fund --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="input-wallet">Sumber Rekening / Dompet</label>
+            <select id="input-wallet" class="form-control">
+              <option value="Rekening Operasional Dapur">Rekening Operasional Dapur (BCA/Mandiri)</option>
+              <option value="Dompet Fisik / Tunai Istri">Dompet Fisik / Tunai Istri</option>
+              <option value="Rekening Gaji Suami">Rekening Gaji Suami</option>
+              <option value="E-Wallet Gopay / OVO">E-Wallet (Gopay / ShopeePay / OVO)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="input-notes">Catatan Belanja (Opsional)</label>
+            <input type="text" id="input-notes" class="form-control" placeholder="Misal: Belanja sayur pasar Limo, galon, dll">
+          </div>
+
+          <button type="submit" id="btn-submit-trx" class="btn-submit">
+            Catat Transaksi Sekarang
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- View 3: Sinking Funds Tracker -->
+    <section id="view-sinking" class="view-panel">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Target Tabungan & Sinking Funds</span>
+          <span class="card-badge">Tujuan Terarah</span>
+        </div>
+        <p style="font-size:13px;color:var(--color-text-muted);margin-bottom:12px;">
+          Pelacakan saldo riil untuk biaya masuk sekolah, cadangan UKT kuliah, dan investasi hari tua.
+        </p>
+      </div>
+      <div id="sf-container">
+        <!-- Diisi otomatis oleh Javascript.html -->
+        <div style="color:var(--color-text-muted);font-size:13px;padding:8px 0;">Memuat data sinking funds...</div>
+      </div>
+    </section>
+
+    <!-- View 4: Commuter & Vehicle Log -->
+    <section id="view-vehicle" class="view-panel">
+      <!-- Commuter Efficiency Comparison -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Komuter Cinere – Jakarta</span>
+          <span class="card-badge">Efisiensi EV</span>
+        </div>
+        <div style="font-size:12px;color:var(--color-text-muted);margin-bottom:10px;" id="veh-route">
+          Cinere (Limo) - Jakarta PP (46 km/hari)
+        </div>
+        <div class="stat-grid">
+          <div class="stat-box">
+            <div class="stat-label">Biaya Riil EV Motor</div>
+            <div class="stat-value stat-highlight" id="veh-ev-cost">Rp275.000/bln</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Perkiraan BBM PCX Lama</div>
+            <div class="stat-value" id="veh-pcx-cost">Rp414.200/bln</div>
+          </div>
+        </div>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px;font-size:13px;color:#166534;">
+          💡 <strong>Penghematan Komuter:</strong> <span id="veh-savings">Rp139.200/bulan</span> (+ Surplus modal PCX Rp8.5jt - Rp10jt).
+        </div>
+      </div>
+
+      <!-- Quick Vehicle Log Input -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Catat Log Kendaraan</span>
+          <span class="card-badge">Motor Listrik</span>
+        </div>
+        <form id="form-vehicle">
+          <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label class="form-label" for="veh-input-date">Tanggal</label>
+              <input type="date" id="veh-input-date" class="form-control" required>
+            </div>
+            <div>
+              <label class="form-label" for="veh-input-vehicle">Kendaraan</label>
+              <select id="veh-input-vehicle" class="form-control">
+                <option value="EV_MOTOR">Motor Listrik (STNK)</option>
+                <option value="ICE_PCX">Honda PCX (Arsip)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label class="form-label" for="veh-input-type">Jenis Biaya</label>
+              <select id="veh-input-type" class="form-control">
+                <option value="BATTERY_RENT">Sewa Baterai Bulanan</option>
+                <option value="CAS_LISTRIK">Cas Listrik Rumah</option>
+                <option value="SERVIS_OLI">Servis Berkala / Ban</option>
+                <option value="SPAREPART">Sparepart / Aksesoris</option>
+                <option value="BBM">Bensin (Jika Darurat)</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="veh-input-odo">Spidometer (KM)</label>
+              <input type="number" id="veh-input-odo" class="form-control" placeholder="Contoh: 12450">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="veh-input-cost">Total Biaya</label>
+            <div class="input-rupiah-prefix">
+              <span class="input-prefix-tag">Rp</span>
+              <input type="text" id="veh-input-cost" class="form-control" placeholder="0" inputmode="numeric" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="veh-input-notes">Catatan Perjalanan / Servis</label>
+            <input type="text" id="veh-input-notes" class="form-control" placeholder="Misal: Sewa baterai bulan berjalan">
+          </div>
+
+          <button type="submit" id="btn-submit-veh" class="btn-submit">
+            Simpan Log Kendaraan
+          </button>
+        </form>
+      </div>
+
+      <!-- Recent Vehicle Logs -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Riwayat Log Komuter</span>
+        </div>
+        <div id="veh-recent-logs" class="trx-list">
+          <div style="color:var(--color-text-muted);font-size:13px;padding:8px 0;">Memuat riwayat kendaraan...</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-target="view-dashboard" onclick="switchView('view-dashboard')">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span>Dashboard</span>
+    </button>
+    <button class="nav-item" data-target="view-input" onclick="switchView('view-input')">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+      <span>Catat (+)</span>
+    </button>
+    <button class="nav-item" data-target="view-sinking" onclick="switchView('view-sinking')">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+      <span>Tabungan</span>
+    </button>
+    <button class="nav-item" data-target="view-vehicle" onclick="switchView('view-vehicle')">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>
+      <span>Komuter EV</span>
+    </button>
+  </nav>
+
+  <!-- Modal Dialog: Switch Domino Financial Phase -->
+  <div id="modal-phase" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-title">Pilih Fase Finansial Domino</div>
+      <div class="modal-desc">
+        Peralihan fase secara dinamis menyesuaikan alokasi pos anggaran Rp17.000.000 tanpa merusak formula historis.
+      </div>
+
+      <div id="modal-phase-options">
+        <!-- Diisi oleh Javascript.html -->
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-modal-cancel" onclick="closePhaseModal()">Batal</button>
+        <button type="button" id="btn-confirm-phase" class="btn-modal-confirm" onclick="confirmPhaseSwitch()">Aktifkan Fase Ini</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Injected Initial Data from Backend -->
+  <script>
+    window.INITIAL_DATA = <?!= initialDataJson ?>;
+  </script>
+
+  <?!= include('Javascript'); ?>
+</body>
+</html>
