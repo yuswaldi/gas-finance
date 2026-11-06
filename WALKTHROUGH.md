@@ -30,8 +30,8 @@ Sistem manajemen keuangan keluarga **FinKeluarga** telah selesai diimplementasik
    * **Visualisasi Progress Bar Status Warna:** Hijau (`<75%`), Kuning (`75-90%`), dan Merah (`>90%`).
 
 5. **CI/CD Automation & Test Suite:**
-   * Workflow [.github/workflows/validation.yml](file:///var/www/gas/personal_finance/.github/workflows/validation.yml) untuk menjalankan Jest dan syntax audit guardrail di GitHub Actions.
-   * Workflow [.github/workflows/deploy.yml](file:///var/www/gas/personal_finance/.github/workflows/deploy.yml) untuk deployment otomatis ke Google Apps Script via `@google/clasp`.
+   * Workflow [.github/workflows/validation.yml](file:///var/www/gas/personal_finance/.github/workflows/validation.yml) untuk menjalankan Jest dan syntax audit guardrail di GitHub Actions (dikonfigurasi tanpa lock-file cache agar kompatibel dengan zero local tooling).
+   * Workflow [.github/workflows/deploy.yml](file:///var/www/gas/personal_finance/.github/workflows/deploy.yml) untuk deployment otomatis ke Google Apps Script via `@google/clasp` menggunakan `npm install` langsung di runner.
 
 ---
 

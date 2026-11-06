@@ -18,11 +18,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install Clasp & Dependencies
         run: |
-          npm ci || npm install -g @google/clasp
+          npm install
 
       - name: Authenticate Clasp
         run: |
