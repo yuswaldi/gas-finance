@@ -35,7 +35,7 @@ jobs:
             const fs = require('fs');
             const claspConfig = {
               scriptId: '${{ secrets.SCRIPT_ID }}',
-              rootDir: './src'
+              rootDir: 'src'
             };
             fs.writeFileSync('./.clasp.json', JSON.stringify(claspConfig, null, 2));
           "
