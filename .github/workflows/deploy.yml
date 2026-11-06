@@ -39,6 +39,17 @@ jobs:
             };
             fs.writeFileSync('./.clasp.json', JSON.stringify(claspConfig, null, 2));
           "
+      - name: Verify Directory & Files
+        run: |
+          echo "=== Root Directory Content ==="
+          ls -la
+          echo "=== Content of ./src Directory ==="
+          if [ -d "./src" ]; then
+            ls -la ./src
+          else
+            echo "ERROR: Folder ./src tidak ditemukan di repository!"
+            exit 1
+          fi
 
       - name: Deploy Code to Google Apps Script
         run: |
