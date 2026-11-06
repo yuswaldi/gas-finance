@@ -29,3 +29,41 @@ description: Autonomous maintenance, refactoring, feature expansion, and CI/CD v
 7. **Pure Numeric Database Values:** Nominal amounts stored as pure numbers (e.g., `1500000`). Currency formatting is presentation-only.
 8. **Host Environment Independence (Zero Local Tooling):** Do NOT install Node.js, npm, or `@google/clasp` on the local host. All testing (Jest) and clasp deployment runs exclusively in GitHub Actions runner (`ubuntu-latest`).
 9. **Artifact Persistence in Project Directory:** All project artifacts (implementation plan, walkthroughs, specs) MUST be stored in `/var/www/gas/personal_finance/`.
+
+## 3. Mandatory Git Commit Protocol
+Every completed task MUST result in a Git commit.
+
+Before committing:
+
+```bash
+git status
+git diff
+```
+
+Verify:
+
+* no secrets
+* no `.env`
+* no unrelated files
+
+Commit messages should follow:
+
+```text
+feat: ...
+fix: ...
+test: ...
+docs: ...
+refactor: ...
+chore: ...
+```
+
+Example:
+
+```text
+feat: configure auth and sales database connections
+feat: add read-only authentication model
+feat: configure sanctum token storage on sales database
+feat: add login endpoint
+test: add sanctum authentication tests
+docs: document multi database architecture
+```

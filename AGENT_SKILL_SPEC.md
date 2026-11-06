@@ -163,12 +163,40 @@ Setiap kali melakukan perubahan kode:
 
 2. **Validasi Clasp:** Pastikan setiap file baru terdaftar di `.claspignore` jika merupakan file pendukung development.
 
-3. **Pemberian Pesan Commit Git yang Terstandarisasi:**
+3. **Mandatory Git Commit Standard:**
+   Every completed task MUST result in a Git commit.
 
-   * `feat: <penjelasan fitur baru>`
+   Before committing:
 
-   * `fix: <penjelasan perbaikan bug kalkulasi/UI>`
+   ```bash
+   git status
+   git diff
+   ```
 
-   * `refactor: <optimasi performa/clean code>`
+   Verify:
 
-   * `docs: <pembaruan PRD atau instruksi>`
+   * no secrets
+   * no `.env`
+   * no unrelated files
+
+   Commit messages should follow:
+
+   ```text
+   feat: ...
+   fix: ...
+   test: ...
+   docs: ...
+   refactor: ...
+   chore: ...
+   ```
+
+   Example:
+
+   ```text
+   feat: configure auth and sales database connections
+   feat: add read-only authentication model
+   feat: configure sanctum token storage on sales database
+   feat: add login endpoint
+   test: add sanctum authentication tests
+   docs: document multi database architecture
+   ```
